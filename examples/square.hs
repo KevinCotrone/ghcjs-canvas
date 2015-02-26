@@ -21,16 +21,19 @@ main = do
   ctx <- getContext =<< indexArray 0 . castRef =<< select "#theCanvas"
   i <- createImage "test.png"
   g <- createImage "animation-tankBlue.png"
+  let fullPercentage = 0.5
   (width, height) <- imageDimensions g
   drawImage i 0 0 124 200 ctx
-  let fullPercentage = 0.5
-  drawImageSlice g 0 (height - height * fullPercentage) width (height * fullPercentage) 0 (200 - 200 * fullPercentage) 124 (200 * fullPercentage) ctx
+  drawImageSlice g 0 (height - (getPictureSlice 100 1000 fullPercentage)) width (getPictureSlice 100 1000 fullPercentage) 0 (200 - 200 * fullPercentage) 124 (200 * fullPercentage) ctx
   drawLines ctx
   translate 0 (185 - 180 * fullPercentage) ctx
   drawCenterLine ctx
   translate 155 0 ctx
   drawTriangle ctx
   return ()
+
+getPictureSlice :: Double -> Double -> Double -> Double
+getPictureSlice minHeight maxHeight percentage = minHeight + ((maxHeight - minHeight) * percentage)
 
 drawTriangle :: Context -> IO ()
 drawTriangle ctx = do
