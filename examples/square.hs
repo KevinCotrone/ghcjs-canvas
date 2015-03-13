@@ -21,16 +21,37 @@ main = do
   ctx <- getContext =<< indexArray 0 . castRef =<< select "#theCanvas"
   i <- createImage "test.png"
   g <- createImage "animation-tankBlue.png"
-  let fullPercentage = 0.5
+  let fullPercentage = 0.7
   (width, height) <- imageDimensions g
   drawImage i 0 0 124 200 ctx
-  drawImageSlice g 0 (height - (getPictureSlice 100 1000 fullPercentage)) width (getPictureSlice 100 1000 fullPercentage) 0 (200 - 200 * fullPercentage) 124 (200 * fullPercentage) ctx
+  drawImagePercentage ctx g (124,200) fullPercentage
   drawLines ctx
   translate 0 (185 - 180 * fullPercentage) ctx
   drawCenterLine ctx
   translate 155 0 ctx
   drawTriangle ctx
   return ()
+
+
+-- | Given an image, (width, height) and the height percentage,
+-- draw an image starting from the bottom of the screen until it hits correct percent of
+-- the image using drawImageSlice
+drawImagePercentage :: Context -> Image -> (Double, Double) -> Double -> IO ()
+drawImagePercentage ctx img (ctxWidth, ctxHeight) perc = do
+  (imgWidth, imgHeight) <- imageDimensions img
+  let sPerc = scalePerc (0.05, 0.9) perc
+      sx = 0
+      sHeight = imgHeight * sPerc
+      sy = imgHeight - sHeight
+      sWidth = imgWidth
+      dx = 0
+      dWidth = ctxWidth
+      dHeight = ctxHeight * sPerc
+      dy = ctxHeight - dHeight
+  drawImageSlice img sx sy sWidth sHeight dx dy dWidth dHeight ctx
+
+scalePerc :: (Double,Double) -> Double -> Double
+scalePerc (minP, maxP) p = minP + (maxP * p)
 
 getPictureSlice :: Double -> Double -> Double -> Double
 getPictureSlice minHeight maxHeight percentage = minHeight + ((maxHeight - minHeight) * percentage)
@@ -91,12 +112,14 @@ imageHeight img = [js|`img.height|]
 imageWidth :: Image -> IO Double
 imageWidth img = [js|`img.width|]
 
+-- | Load an image into a JSRef wrapper
+-- and wait for the image to be loaded
 createImage :: String -> IO Image
 createImage imageName = do
   image <- newImage
   [js_| `image.src = `imageName|]
   mv <- newEmptyMVar
-  cb <- syncCallback AlwaysRetain True (putMVar mv ())
+  cb <- syncCallback AlwaysRetain True (putMVar mv ()) -- Put the mvar when the image has been loaded
   [js_|`image.onload = `cb|]
   _ <- takeMVar mv
   return image
