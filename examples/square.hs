@@ -15,18 +15,45 @@ import Text.Printf
 
 newtype Scale = Scale { unScale :: (Int, Int) } deriving (Eq, Show)
 
+data TankColor = BlueTank | BlackTank deriving (Show, Eq)
+
+type RenderableTank = TankGauge Image
+
+type RawTank = TankGauge TankColor
+
+data TankGauge imgType = TankGauge {
+  tankGaugeMaxLevel :: Double
+, tankGaugeCurrentLevel :: Double
+, tankGaugeColor :: imgType
+} deriving (Show, Eq)
+
+toRenderable :: RawTank -> IO RenderableTank
+toRenderable (TankGauge maxLevel currentLevel color) = TankGauge maxLevel currentLevel <$> getImage color
+
+testGauge :: RawTank
+testGauge = TankGauge 200 175 BlueTank
+
+
+getImage :: TankColor -> IO Image
+getImage BlueTank = createImage "animation-tankBlue.png"
+getImage BlackTank = createImage "test1.png"
+
 
 scaleWidthHeight :: Scale -> (Int,Int) -> (Int, Int)
 scaleWidthHeight (Scale (absWidth, absHeight)) (width, height) = (floor width' , floor height')
   where width' = (fromIntegral $ width * absWidth) / 1000.0 :: Double
         height' = (fromIntegral $ height * absHeight )/ 1000.0 :: Double
+
+
 main = do
   ctx <- getContext =<< indexArray 0 . castRef =<< select "#theCanvas"
   i <- createImage "test.png"
   g <- createImage "animation-tankBlue.png"
   let sc = Scale (200,200)
-  let render = drawTank ctx i g
-  mapM_ (\ p -> onAnimation $ clearRect 0 0 2000 2000 ctx >> render 200 100 (easeIn 1.0 p)) $ [0.0,0.02..1.0]
+  renderableGauge <- toRenderable testGauge
+  let render = drawTank ctx i renderableGauge
+  scale 3 3 ctx
+  mapM_ (\ p -> onAnimation $ clearRect 0 0 2000 2000 ctx >> render (easeIn 1.0 p) ) $ [0.0,0.02..1.0]
 
 
 
@@ -36,13 +63,13 @@ easeIn maxP t = maxP * if t < 0.5
                          else -1+(4-2*t)*t
 
 
-drawTank :: Context -> Image -> Image -> Double -> Double -> Double -> IO ()
-drawTank ctx i g maxVal val progress = do
+drawTank :: Context -> Image -> RenderableTank -> Double -> IO ()
+drawTank ctx baseImg (TankGauge maxVal val overlay) progress = do
   let fullPercentage = progress * (val / maxVal)
       currentAnimVal = progress * val
-  (width, height) <- imageDimensions g
-  drawImage i 0 0 124 200 ctx
-  drawImagePercentage ctx g (124,200) fullPercentage
+  (width, height) <- imageDimensions overlay
+  drawImage baseImg 0 0 124 200 ctx
+  drawImagePercentage ctx overlay (124,200) fullPercentage
   drawLines ctx
   translate 0 (190 - 180 * fullPercentage) ctx
   drawCenterLine ctx
@@ -94,6 +121,7 @@ drawTriangle ctx = do
   lineTo 7.6 (-7.8) ctx
   lineTo 7.6 (7.8) ctx
   fill ctx
+  closePath ctx
 
 
 drawCenterLine :: Context -> IO ()
