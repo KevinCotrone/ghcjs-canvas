@@ -23,7 +23,7 @@ main = do
   g <- createImage "animation-tankBlue.png"
   let sc = Scale (200,200)
   let render = drawTank ctx i g
-  mapM_ render $ cycle [0.0,0.1..1.0]
+  mapM_ (\ p -> render p >> threadDelay 1000000 >> clearRect 0 0 124 200 ctx ) $ cycle [0.0,0.1..1.0]
 
 
 drawTank :: Context -> Image -> Image -> Double -> IO ()
