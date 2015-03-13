@@ -21,7 +21,13 @@ main = do
   ctx <- getContext =<< indexArray 0 . castRef =<< select "#theCanvas"
   i <- createImage "test.png"
   g <- createImage "animation-tankBlue.png"
-  let fullPercentage = 0.7
+  let sc = Scale (200,200)
+  let render = drawTank ctx i g
+  mapM_ render $ cycle [0.0,0.1..1.0]
+
+
+drawTank :: Context -> Image -> Image -> Double -> IO ()
+drawTank ctx i g fullPercentage = do
   (width, height) <- imageDimensions g
   drawImage i 0 0 124 200 ctx
   drawImagePercentage ctx g (124,200) fullPercentage
